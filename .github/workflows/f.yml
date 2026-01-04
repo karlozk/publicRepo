@@ -1,4 +1,4 @@
-name: HTML CI/CD to EC2
+name: Docker CI/CD to EC2
 
 on:
   push:
@@ -10,12 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout source code
-    - name: Checkout repository
+    - name: Checkout source
       uses: actions/checkout@v4
 
-    # 2. Deploy to EC2 via SSH
-    - name: Deploy HTML to EC2 Nginx
+    - name: Deploy Docker container on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -25,13 +23,23 @@ jobs:
         script: |
           echo "Connected to EC2"
 
-          sudo mkdir -p /usr/share/nginx/html
-          sudo rm -rf /usr/share/nginx/html/*
+          cd /home/ec2-user
 
-          sudo cp -r /home/ec2-user/* /usr/share/nginx/html/ || true
+          if [ ! -d html-cicd ]; then
+            git clone https://github.com/${{ github.repository }}.git html-cicd
+          fi
 
-          sudo systemctl reload nginx
+          cd html-cicd
+          git pull origin main
 
-          echo "Deployment completed successfully"
+          docker stop html-app || true
+          docker rm html-app || true
 
+          docker build -t html-cicd:latest .
 
+          docker run -d \
+            --name html-app \
+            -p 80:80 \
+            html-cicd:latest
+
+          echo "Docker deployment completed"
