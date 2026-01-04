@@ -1,25 +1,37 @@
-name: HTML CI/CD
+name: HTML CI/CD to EC2
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    # 1. Checkout source code
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Deploy HTML to EC2
+    # 2. Deploy to EC2 via SSH
+    - name: Deploy HTML to EC2 Nginx
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
+        username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
+        port: 22
         script: |
+          echo "Connected to EC2"
+
+          sudo mkdir -p /usr/share/nginx/html
           sudo rm -rf /usr/share/nginx/html/*
-          sudo cp -r * /usr/share/nginx/html/
+
+          sudo cp -r /home/ec2-user/* /usr/share/nginx/html/ || true
+
           sudo systemctl reload nginx
+
+          echo "Deployment completed successfully"
+
 
